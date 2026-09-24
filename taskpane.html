@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <meta charset="UTF-8" />
+  <title>Search</title>
+
+  <style>
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      padding:18px;
+      font-family:Segoe UI, Arial;
+      background:linear-gradient(135deg,#f4f7fb,#e9eef8);
+    }
+
+    .container{
+      background:white;
+      border-radius:20px;
+      padding:18px;
+      box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .title{
+      margin:0;
+      font-size:18px;
+      font-weight:700;
+      color:#222;
+    }
+
+    /* ===== البحث ===== */
+    .searchArea{
+      display:flex;
+      gap:12px;
+      margin-top:12px;
+    }
+
+    .fieldBox{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* 🔥 Label احترافي */
+    .fieldBox label{
+      margin-bottom:6px;
+      font-size:13px;
+      font-weight:800;
+      color:#1f2937;
+      letter-spacing:0.3px;
+    }
+
+    /* 🔥 INPUT MODERN قوي */
+    .fieldBox textarea{
+      width:100%;
+      height:130px;
+
+      resize:none;
+      outline:none;
+
+      padding:14px;
+
+      font-size:12px;
+      line-height:1.5;
+      font-family:Segoe UI, Arial;
+
+      border-radius:16px;
+
+      /* شكل احترافي */
+      background: linear-gradient(145deg, #ffffff, #f2f6ff);
+
+      border: 2px solid #d6e2f0;
+
+      box-shadow:
+        0 4px 10px rgba(0,0,0,0.06),
+        inset 0 1px 2px rgba(0,0,0,0.04);
+
+      transition: all 0.25s ease;
+
+      white-space:pre;
+      word-break:break-word;
+    }
+
+    /* 🔥 عند التركيز */
+    .fieldBox textarea:focus{
+      border: 2px solid #3b82f6;
+
+      box-shadow:
+        0 0 0 4px rgba(59,130,246,0.15),
+        0 10px 20px rgba(0,0,0,0.08);
+
+      background:#ffffff;
+    }
+
+    /* ===== زر البحث + رفع ملف ===== */
+    .btnGroup{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    button,
+    .uploadBtn{
+      flex:1;
+      border:none;
+      cursor:pointer;
+      padding:12px;
+      font-size:13px;
+      font-weight:700;
+      border-radius:14px;
+      transition:0.2s;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+
+    button{
+      background:linear-gradient(135deg,#0078d4,#005ea6);
+      color:white;
+    }
+
+    button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 8px 18px rgba(0,120,212,0.25);
+    }
+
+    .uploadBtn{
+      background:#f3f6fb;
+      color:#333;
+      box-shadow:inset 0 0 0 1px #dbe2ee;
+      position:relative;
+    }
+
+    .uploadBtn:hover{
+      background:#e9f1ff;
+    }
+
+    .uploadBtn input{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+    }
+
+    /* ===== مسح + Export ===== */
+    .centerBtns{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .centerBtns button{
+      flex:0.5;
+      max-width:160px;
+      padding:10px;
+      font-size:12px;
+    }
+
+    #exportBtn{
+      background:linear-gradient(135deg,#28a745,#1f7a33);
+    }
+
+    #clearBtn{
+      background:linear-gradient(135deg,#dc3545,#a71d2a);
+    }
+
+    /* ===== وضع البحث ===== */
+    .modeRow{
+      display:flex;
+      justify-content:center;
+      margin-top:12px;
+    }
+
+    .modeRow button{
+      width:220px;
+      background:linear-gradient(135deg,#6c757d,#495057);
+    }
+
+    /* ===== النتائج ===== */
+    #result{
+      margin-top:10px;
+      background:#f7f9fc;
+      border-radius:14px;
+      padding:12px;
+
+      max-height:280px;
+      overflow:auto;
+
+      font-size:13px;
+      line-height:1.6;
+      white-space:pre-line;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h2 class="title">🔍 Search</h2>
+
+    <!-- البحث -->
+    <div class="searchArea">
+
+      <div class="fieldBox">
+        <label>رقم الحساب</label>
+        <textarea id="accountNumber"
+          placeholder="اكتب أرقام الحسابات كل رقم في سطر"></textarea>
+      </div>
+
+      <div class="fieldBox">
+        <label>اسم العميل</label>
+        <textarea id="customerName"
+          placeholder="اكتب أسماء العملاء كل اسم في سطر"></textarea>
+      </div>
+
+    </div>
+
+    <!-- بحث + رفع -->
+    <div class="btnGroup">
+
+      <button id="searchBtn">🔎 بحث</button>
+
+      <label class="uploadBtn">
+        📁 رفع ملف
+        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv">
+      </label>
+
+    </div>
+
+    <!-- مسح + Export -->
+    <div class="centerBtns">
+
+      <button id="clearBtn">🗑 مسح</button>
+      <button id="exportBtn">📤 Export</button>
+
+    </div>
+
+    <!-- وضع البحث -->
+    <div class="modeRow">
+      <button id="modeBtn">🔁 وضع البحث: مستقل</button>
+    </div>
+
+    <!-- النتائج -->
+    <div id="result">النتائج تظهر هنا</div>
+
+  </div>
+
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="taskpane.js"></script>
+
+</body>
+
+</html>

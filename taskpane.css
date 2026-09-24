@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Excel Smart Search</title>
+
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="taskpane.js"></script>
+
+  <style>
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      font-family:"Segoe UI",sans-serif;
+      background:linear-gradient(135deg,#eef2f7,#f7f9fc);
+      padding:20px;
+      margin:0;
+    }
+
+    .card{
+      width:100%;
+      background:white;
+      border-radius:14px;
+      padding:18px;
+      box-shadow:0 8px 20px rgba(0,0,0,0.08);
+    }
+
+    h2{
+      margin:0 0 12px 0;
+      font-size:16px;
+    }
+
+    /* ✅ عمودين */
+    .split-box{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .box{
+      display:flex;
+      flex-direction:column;
+    }
+
+    .box label{
+      margin-bottom:6px;
+      font-size:11px;
+      font-weight:600;
+      color:#444;
+    }
+
+    textarea{
+      width:100%;
+      height:150px;
+      padding:8px;
+      border-radius:12px;
+      border:1px solid #ddd;
+      resize:none;
+      font-size:11px;
+      line-height:1.3;
+      outline:none;
+      background:#fafafa;
+      font-family:monospace;
+    }
+
+    .btns{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    button{
+      padding:9px 12px;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:12px;
+      transition:0.2s;
+    }
+
+    .search-btn{
+      background:#4a90e2;
+      color:white;
+    }
+
+    .show-btn{
+      background:#f1f1f1;
+      color:#333;
+    }
+
+    .stats-box{
+      margin-top:15px;
+      background:#f9fafc;
+      border-radius:12px;
+      padding:12px;
+      border:1px solid #e5e7eb;
+    }
+
+    .stat-item{
+      display:flex;
+      justify-content:space-between;
+      font-size:12px;
+      margin-bottom:8px;
+    }
+
+    .stat-item span{
+      font-weight:bold;
+      color:#4a90e2;
+    }
+
+    /* 📌 القيم غير الموجودة */
+    #missingBox{
+      margin-top:12px;
+      padding:10px;
+      border-radius:10px;
+      background:#fff3f3;
+      border:1px solid #ffd0d0;
+      font-size:11px;
+      max-height:120px;
+      overflow:auto;
+      display:none;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+
+    <h2>🔎 Excel Smart Search</h2>
+
+    <!-- ✅ الرقم شمال - الاسم يمين -->
+    <div class="split-box">
+
+      <!-- 🔢 الرقم -->
+      <div class="box">
+
+        <label>🔢 الرقم</label>
+
+        <textarea
+          id="numberBox"
+          placeholder="اكتب الارقام هنا"
+        ></textarea>
+
+      </div>
+
+      <!-- 👤 الاسم -->
+      <div class="box">
+
+        <label>👤 الاسم</label>
+
+        <textarea
+          id="nameBox"
+          placeholder="اكتب الاسماء هنا"
+        ></textarea>
+
+      </div>
+
+    </div>
+
+    <div class="btns">
+
+      <button class="show-btn"
+        onclick="document.getElementById('fileInput').click()">
+
+        📁 رفع ملف
+
+      </button>
+
+      <input
+        type="file"
+        id="fileInput"
+        accept=".xlsx,.xls"
+        hidden
+      />
+
+      <button class="show-btn" onclick="showAllRows()">
+        👁️ إظهار
+      </button>
+
+      <button class="search-btn" onclick="searchNumber()">
+        🔍 بحث
+      </button>
+
+      <button class="show-btn" onclick="clearBox()">
+        🧹 مسح
+      </button>
+
+    </div>
+
+    <div class="stats-box">
+
+      <div class="stat-item">
+        📋 القيم المدخلة:
+        <span id="inputCount">0</span>
+      </div>
+
+      <div class="stat-item">
+        📊 حالة القيم:
+        <span id="liveStatus">جاهز للبحث</span>
+      </div>
+
+    </div>
+
+    <!-- 📌 القيم غير الموجودة -->
+    <div id="missingBox"></div>
+
+  </div>
+
+</body>
+</html>
