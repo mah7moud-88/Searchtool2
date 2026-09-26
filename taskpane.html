@@ -26,6 +26,14 @@
       box-shadow:0 8px 25px rgba(0,0,0,0.08);
     }
 
+    /* ===== الهيدر (العنوان + زر طريقة البحث) ===== */
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
     .title{
       margin:0;
       font-size:18px;
@@ -71,7 +79,6 @@
 
       border-radius:16px;
 
-      /* شكل احترافي */
       background: linear-gradient(145deg, #ffffff, #f2f6ff);
 
       border: 2px solid #d6e2f0;
@@ -86,7 +93,6 @@
       word-break:break-word;
     }
 
-    /* 🔥 عند التركيز */
     .fieldBox textarea:focus{
       border: 2px solid #3b82f6;
 
@@ -183,6 +189,62 @@
       background:linear-gradient(135deg,#6c757d,#495057);
     }
 
+    /* ===== زر طريقة البحث (مودرن صغير) ===== */
+    .fieldWrap{
+      position:relative;
+      display:inline-block;
+      width:auto;
+    }
+
+    .fieldWrap button{
+      width:auto;
+      padding:8px 14px;
+      font-size:12px;
+      font-weight:700;
+      border-radius:999px;
+      background:linear-gradient(135deg,#0d9488,#0f766e);
+      color:#fff;
+      box-shadow:0 4px 12px rgba(13,148,136,0.25);
+      transition:0.2s;
+    }
+
+    .fieldWrap button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 8px 18px rgba(13,148,136,0.35);
+    }
+
+    .fieldMenu{
+      display:none;
+      position:absolute;
+      top:calc(100% + 8px);
+      right:0;
+      left:auto;
+      min-width:170px;
+      background:#fff;
+      border:1px solid #e2e8f0;
+      border-radius:14px;
+      padding:6px;
+      z-index:100;
+      box-shadow:0 10px 25px rgba(0,0,0,0.12);
+      overflow:hidden;
+    }
+
+    .fieldMenu .field-item{
+      padding:10px 12px;
+      cursor:pointer;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:600;
+      color:#1f2937;
+      transition:0.15s;
+      white-space:nowrap;
+    }
+
+    .fieldMenu .field-item:hover{
+      background:#eef6ff;
+      color:#0078d4;
+    }
+
     /* ===== النتائج ===== */
     #result{
       margin-top:10px;
@@ -206,13 +268,28 @@
 
   <div class="container">
 
-    <h2 class="title">🔍 Search All Data</h2>
+    <!-- العنوان + زر طريقة البحث -->
+    <div class="header">
+
+      <h2 class="title">🔍 Search All Data</h2>
+
+      <div class="fieldWrap">
+        <button id="fieldBtn">🔎 حدد طريقة البحث</button>
+        <div class="fieldMenu" id="fieldMenu">
+          <div class="field-item" data-field="account">📌 رقم الحساب</div>
+          <div class="field-item" data-field="phone">📞 رقم الهاتف</div>
+          <div class="field-item" data-field="national">🆔 الرقم الوطني</div>
+          <div class="field-item" data-field="passport">🪪 رقم الجواز</div>
+        </div>
+      </div>
+
+    </div>
 
     <!-- البحث -->
     <div class="searchArea">
 
       <div class="fieldBox">
-        <label>رقم الحساب</label>
+        <label id="accountLabel">رقم الحساب</label>
         <textarea id="accountNumber"
           placeholder="اكتب أرقام الحسابات كل رقم في سطر"></textarea>
       </div>
