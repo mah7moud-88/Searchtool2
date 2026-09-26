@@ -2,9 +2,11 @@ Office.onReady(() => {
 
   const searchBtn = document.getElementById("searchBtn");
   const exportBtn = document.getElementById("exportBtn");
-  const clearBtn = document.getElementById("clearBtn");
+  const clearBtn  = document.getElementById("clearBtn");
   const excelFile = document.getElementById("excelFile");
-  const modeBtn = document.getElementById("modeBtn");
+  const modeBtn   = document.getElementById("modeBtn");
+  const fieldBtn  = document.getElementById("fieldBtn");
+  const fieldMenu = document.getElementById("fieldMenu");
 
   // =========================
   // الأحداث
@@ -14,13 +16,8 @@ Office.onReady(() => {
     excelFile.addEventListener("change", importAccountsFromFile);
   }
 
-  if (searchBtn) {
-    searchBtn.onclick = searchAccount;
-  }
-
-  if (exportBtn) {
-    exportBtn.onclick = exportExcel;
-  }
+  if (searchBtn) searchBtn.onclick = searchAccount;
+  if (exportBtn) exportBtn.onclick = exportExcel;
 
   if (clearBtn) {
     clearBtn.onclick = () => {
@@ -34,14 +31,66 @@ Office.onReady(() => {
 
   if (modeBtn) {
     modeBtn.onclick = () => {
-      searchMode =
-        searchMode === "independent" ? "paired" : "independent";
-
+      searchMode = searchMode === "independent" ? "paired" : "independent";
       modeBtn.innerText =
         searchMode === "independent"
           ? "🔁 وضع البحث: مستقل"
           : "🔗 وضع البحث: مطابق";
     };
+  }
+
+  // =========================
+  // زر "حدد طريقة البحث"
+  // =========================
+
+  const FIELD_LABELS = {
+    account:  "🔎 رقم الحساب",
+    phone:    "🔎 رقم الهاتف",
+    national: "🔎 الرقم الوطني",
+    passport: "🔎 رقم الجواز"
+  };
+
+  const FIELD_TITLES = {
+    account:  "رقم الحساب",
+    phone:    "رقم الهاتف",
+    national: "الرقم الوطني",
+    passport: "رقم الجواز"
+  };
+
+  const PLACEHOLDERS = {
+    account:  "اكتب أرقام الحسابات كل رقم في سطر",
+    phone:    "اكتب أرقام الهواتف كل رقم في سطر",
+    national: "اكتب الأرقام الوطنية كل رقم في سطر",
+    passport: "اكتب أرقام الجوازات كل رقم في سطر"
+  };
+
+  if (fieldBtn && fieldMenu) {
+
+    fieldBtn.onclick = (e) => {
+      e.stopPropagation();
+      fieldMenu.style.display =
+        fieldMenu.style.display === "block" ? "none" : "block";
+    };
+
+    fieldMenu.querySelectorAll(".field-item").forEach(item => {
+      item.onclick = () => {
+        searchField = item.dataset.field;
+
+        fieldBtn.innerText = FIELD_LABELS[searchField];
+
+        const accInput = document.getElementById("accountNumber");
+        const accLabel = document.getElementById("accountLabel");
+
+        if (accInput) accInput.placeholder = PLACEHOLDERS[searchField];
+        if (accLabel) accLabel.innerText   = FIELD_TITLES[searchField];
+
+        fieldMenu.style.display = "none";
+      };
+    });
+
+    document.addEventListener("click", () => {
+      fieldMenu.style.display = "none";
+    });
   }
 
 });
@@ -51,18 +100,23 @@ Office.onReady(() => {
 // المتغيرات
 // ======================================================
 
-let searchMode = "independent";
+let searchMode  = "independent";
+let searchField = "account"; // account | phone | national | passport
 let resultsData = [];
 
-let accountIndex = {};
-let nameIndex = {};
-let pairIndex = {};
+let accountIndex  = {};
+let nameIndex     = {};
+let pairIndex     = {};
 
 let last6Index = {};
 let last5Index = {};
 
+let nationalIndex = {};
+let phoneIndex    = {};
+let passportIndex = {}; // رقم الجواز = العمود D (card)
+
 const CHUNK_SIZE = 5000;
-const MAX_ROWS = 50000;
+const MAX_ROWS   = 50000;
 
 
 // ======================================================
@@ -82,105 +136,138 @@ function cleanValue(value) {
 // ======================================================
 
 function resetIndexes() {
-  accountIndex = {};
-  nameIndex = {};
-  pairIndex = {};
-  last6Index = {};
-  last5Index = {};
+  accountIndex  = {};
+  nameIndex     = {};
+  pairIndex     = {};
+  last6Index    = {};
+  last5Index    = {};
+  nationalIndex = {};
+  phoneIndex    = {};
+  passportIndex = {};
 }
 
 
 // ======================================================
 // إضافة صف إلى الفهارس
 //
-// B = الاسم       (index 0)
-// C = الحساب      (index 1)
-// D = رقم البطاقة (index 2)
-// E = فاضي        (index 3)
-// F = الرقم الوطني(index 4)
-// G = رقم الهاتف  (index 5)
+// B = الاسم        (index 0)
+// C = الحساب       (index 1)
+// D = رقم الجواز   (index 2)
+// E = فاضي         (index 3)
+// F = الرقم الوطني (index 4)
+// G = رقم الهاتف   (index 5)
 // ======================================================
 
 function addRowToIndex(row, rowIndex) {
 
-  const name    = row[0] ?? "";
-  const account = row[1] ?? "";
+  const name     = row[0] ?? "";
+  const account  = row[1] ?? "";
+  const passport = row[2] ?? ""; // D - رقم الجواز
+  const national = row[4] ?? ""; // F
+  const phone    = row[5] ?? ""; // G
 
-  const cleanName = cleanValue(name);
-  const cleanAcc  = cleanValue(account);
-
-  // الرقم الكامل
-  if (cleanAcc) {
-    if (accountIndex[cleanAcc] === undefined) {
-      accountIndex[cleanAcc] = [];
-    }
-    accountIndex[cleanAcc].push(rowIndex);
-  }
+  const cleanName     = cleanValue(name);
+  const cleanAcc      = cleanValue(account);
+  const cleanPassport = cleanValue(passport);
+  const cleanNational = cleanValue(national);
+  const cleanPhone    = cleanValue(phone);
 
   // الاسم
   if (cleanName) {
-    if (!nameIndex[cleanName]) {
-      nameIndex[cleanName] = [];
-    }
+    if (!nameIndex[cleanName]) nameIndex[cleanName] = [];
     nameIndex[cleanName].push(rowIndex);
   }
 
-  // الاسم + الرقم
+  // رقم الحساب
+  if (cleanAcc) {
+    if (accountIndex[cleanAcc] === undefined) accountIndex[cleanAcc] = [];
+    accountIndex[cleanAcc].push(rowIndex);
+  }
+
+  // الاسم + رقم الحساب
   if (cleanName && cleanAcc) {
     const key = cleanName + "|" + cleanAcc;
-    if (pairIndex[key] === undefined) {
-      pairIndex[key] = [];
-    }
+    if (pairIndex[key] === undefined) pairIndex[key] = [];
     pairIndex[key].push(rowIndex);
   }
 
   // آخر 6 أرقام
   if (cleanAcc && cleanAcc.length >= 6) {
     const last6 = cleanAcc.slice(-6);
-    if (!last6Index[last6]) {
-      last6Index[last6] = [];
-    }
+    if (!last6Index[last6]) last6Index[last6] = [];
     last6Index[last6].push(rowIndex);
   }
 
   // آخر 5 أرقام
   if (cleanAcc && cleanAcc.length >= 5) {
     const last5 = cleanAcc.slice(-5);
-    if (!last5Index[last5]) {
-      last5Index[last5] = [];
-    }
+    if (!last5Index[last5]) last5Index[last5] = [];
     last5Index[last5].push(rowIndex);
+  }
+
+  // رقم الجواز
+  if (cleanPassport) {
+    if (!passportIndex[cleanPassport]) passportIndex[cleanPassport] = [];
+    passportIndex[cleanPassport].push(rowIndex);
+  }
+
+  // الرقم الوطني
+  if (cleanNational) {
+    if (!nationalIndex[cleanNational]) nationalIndex[cleanNational] = [];
+    nationalIndex[cleanNational].push(rowIndex);
+  }
+
+  // رقم الهاتف
+  if (cleanPhone) {
+    if (!phoneIndex[cleanPhone]) phoneIndex[cleanPhone] = [];
+    phoneIndex[cleanPhone].push(rowIndex);
   }
 }
 
 
 // ======================================================
-// البحث بالرقم
+// البحث حسب الحقل المختار
 // ======================================================
 
-function findAccountRows(acc) {
+function findRows(value) {
 
-  const cleanAcc = cleanValue(acc);
-  if (!cleanAcc) return [];
+  const v = cleanValue(value);
+  if (!v) return [];
 
-  if (accountIndex[cleanAcc] !== undefined) {
-    return accountIndex[cleanAcc];
+  switch (searchField) {
+
+    case "phone":
+      return phoneIndex[v] || [];
+
+    case "national":
+      return nationalIndex[v] || [];
+
+    case "passport":
+      return passportIndex[v] || [];
+
+    case "account":
+    default:
+      if (accountIndex[v] !== undefined) return accountIndex[v];
+      if (v.length === 5) return last5Index[v] || [];
+      if (v.length === 6) return last6Index[v] || [];
+      if (v.length > 6)   return last6Index[v.slice(-6)] || [];
+      return [];
   }
+}
 
-  if (cleanAcc.length === 5) {
-    return last5Index[cleanAcc] || [];
+
+// ======================================================
+// جلب قيمة الحقل المختار من صف
+// ======================================================
+
+function getFieldValue(item) {
+  switch (searchField) {
+    case "phone":    return item.phone;
+    case "national": return item.national;
+    case "passport": return item.card;   // card = رقم الجواز
+    case "account":
+    default:         return item.account;
   }
-
-  if (cleanAcc.length === 6) {
-    return last6Index[cleanAcc] || [];
-  }
-
-  if (cleanAcc.length > 6) {
-    const last6 = cleanAcc.slice(-6);
-    return last6Index[last6] || [];
-  }
-
-  return [];
 }
 
 
@@ -268,8 +355,7 @@ async function searchAccount() {
       const sheet = context.workbook.worksheets.getActiveWorksheet();
 
       // ==================================================
-      // قراءة Excel على دفعات
-      // نقرأ من العمود B إلى G (6 أعمدة)
+      // قراءة Excel على دفعات (B إلى G)
       // ==================================================
 
       for (let startRow = 0; startRow < MAX_ROWS; startRow += CHUNK_SIZE) {
@@ -288,7 +374,7 @@ async function searchAccount() {
           const row = [
             values[i]?.[0] ?? "", // B - الاسم
             values[i]?.[1] ?? "", // C - الحساب
-            values[i]?.[2] ?? "", // D - رقم البطاقة
+            values[i]?.[2] ?? "", // D - رقم الجواز
             values[i]?.[3] ?? "", // E - فاضي
             values[i]?.[4] ?? "", // F - الرقم الوطني
             values[i]?.[5] ?? ""  // G - رقم الهاتف
@@ -313,10 +399,7 @@ async function searchAccount() {
       let foundCount = 0;
 
 
-      // ==================================================
-      // دالة مساعدة: تقرأ صف كامل وترجّع الكائن
-      // ==================================================
-
+      // دالة مساعدة: تقرأ صف كامل
       async function readFullRow(rowIndex) {
         const r = sheet.getRangeByIndexes(rowIndex, 1, 1, 6);
         r.load("text");
@@ -326,7 +409,7 @@ async function searchAccount() {
         return {
           name:     row[0] ?? "", // B
           account:  row[1] ?? "", // C
-          card:     row[2] ?? "", // D
+          card:     row[2] ?? "", // D - رقم الجواز
           national: row[4] ?? "", // F
           phone:    row[5] ?? ""  // G
         };
@@ -336,7 +419,7 @@ async function searchAccount() {
         return (
           `👤 ${item.name}\n` +
           `📌 ${item.account}\n` +
-          `💳 ${item.card}\n` +
+          `🪪 ${item.card}\n` +
           `🆔 ${item.national}\n` +
           `📞 ${item.phone}\n\n`
         );
@@ -349,10 +432,10 @@ async function searchAccount() {
 
       if (searchMode === "independent") {
 
-        // البحث بالأرقام
+        // البحث بخانة الأرقام (حسب الحقل المختار)
         for (const acc of accounts) {
 
-          const rows = findAccountRows(acc);
+          const rows = findRows(acc);
 
           if (rows.length > 0) {
             for (const rowIndex of rows) {
@@ -373,7 +456,7 @@ async function searchAccount() {
           }
         }
 
-        // البحث بالأسماء
+        // البحث بالأسماء (زي ما هو)
         for (const name of names) {
 
           const cleanName = cleanValue(name);
@@ -402,6 +485,7 @@ async function searchAccount() {
 
       // ==================================================
       // الوضع المطابق
+      // المطابقة: الاسم + الحقل المختار (رقم حساب/هاتف/وطني/جواز)
       // ==================================================
 
       else {
@@ -420,14 +504,17 @@ async function searchAccount() {
             continue;
           }
 
-          const rows = findAccountRows(acc);
+          const rows = findRows(acc);
           let matched = false;
 
           for (const rowIndex of rows) {
 
             const data = await readFullRow(rowIndex);
 
-            if (cleanValue(data.name) === cleanValue(name)) {
+            if (
+              cleanValue(data.name) === cleanValue(name) &&
+              cleanValue(getFieldValue(data)) === cleanValue(acc)
+            ) {
 
               const item = { ...data, status: "موجود" };
               resultsData.push(item);
@@ -468,7 +555,7 @@ async function searchAccount() {
 
 
 // ======================================================
-// تصدير النتائج
+// تصدير النتائج (نفس الأعمدة كما في الكود الأصلي)
 // ======================================================
 
 async function exportExcel() {
@@ -489,7 +576,7 @@ async function exportExcel() {
       const data = [[
         "رقم الحساب",
         "الاسم",
-        "رقم البطاقة",
+        "رقم الجواز",
         "الرقم الوطني",
         "رقم الهاتف",
         "الحالة"
