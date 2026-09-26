@@ -31,7 +31,7 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:10px;
+      gap:8px;
     }
 
     .title{
@@ -189,7 +189,7 @@
       background:linear-gradient(135deg,#6c757d,#495057);
     }
 
-    /* ===== زر طريقة البحث (مودرن صغير) ===== */
+    /* ===== زر طريقة البحث (صغير جدًا مودرن) ===== */
     .fieldWrap{
       position:relative;
       display:inline-block;
@@ -198,42 +198,45 @@
 
     .fieldWrap button{
       width:auto;
-      padding:8px 14px;
-      font-size:12px;
+      flex:0 0 auto;
+      padding:5px 10px;
+      font-size:11px;
       font-weight:700;
       border-radius:999px;
       background:linear-gradient(135deg,#0d9488,#0f766e);
       color:#fff;
-      box-shadow:0 4px 12px rgba(13,148,136,0.25);
+      box-shadow:0 3px 8px rgba(13,148,136,0.25);
       transition:0.2s;
+      line-height:1;
+      white-space:nowrap;
     }
 
     .fieldWrap button:hover{
       transform:translateY(-1px);
-      box-shadow:0 8px 18px rgba(13,148,136,0.35);
+      box-shadow:0 6px 14px rgba(13,148,136,0.35);
     }
 
     .fieldMenu{
       display:none;
       position:absolute;
-      top:calc(100% + 8px);
+      top:calc(100% + 6px);
       right:0;
       left:auto;
-      min-width:170px;
+      min-width:150px;
       background:#fff;
       border:1px solid #e2e8f0;
-      border-radius:14px;
-      padding:6px;
+      border-radius:12px;
+      padding:5px;
       z-index:100;
       box-shadow:0 10px 25px rgba(0,0,0,0.12);
       overflow:hidden;
     }
 
     .fieldMenu .field-item{
-      padding:10px 12px;
+      padding:8px 10px;
       cursor:pointer;
-      border-radius:10px;
-      font-size:13px;
+      border-radius:8px;
+      font-size:12px;
       font-weight:600;
       color:#1f2937;
       transition:0.15s;
@@ -274,7 +277,7 @@
       <h2 class="title">🔍 Search All Data</h2>
 
       <div class="fieldWrap">
-        <button id="fieldBtn">🔎 حدد طريقة البحث</button>
+        <button id="fieldBtn">🔎 حدد</button>
         <div class="fieldMenu" id="fieldMenu">
           <div class="field-item" data-field="account">📌 رقم الحساب</div>
           <div class="field-item" data-field="phone">📞 رقم الهاتف</div>
