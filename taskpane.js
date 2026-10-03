@@ -149,7 +149,6 @@ let passportIndex = {};
 // للفلترة
 let searchButtonMode = "search";
 let lastFilterValues = [];
-let lastFilterColumn = 2;
 
 const CHUNK_SIZE = 5000;
 const MAX_ROWS   = 50000;
@@ -574,18 +573,13 @@ async function searchAccount() {
       // تجهيز بيانات الفلتر
       // ==================================================
 
-      const FIELD_TO_COLUMN = {
-        account:  2,
-        passport: 3,
-        national: 5,
-        phone:    6
-      };
-
+      // ✅ القيم الصالحة فقط (بدون فراغات)
       const rawValues = accountInput
-        .split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+        .split(/\r?\n/)
+        .map(x => String(x).trim())
+        .filter(v => v.length > 0);
 
       lastFilterValues = rawValues;
-      lastFilterColumn = FIELD_TO_COLUMN[searchField] ?? 2;
 
       const hasResults = resultsData.some(r => r.status === "موجود");
 
@@ -612,7 +606,7 @@ async function searchAccount() {
 
 
 // ======================================================
-// تطبيق AutoFilter على الشيت - الإصدار المُصحَّح
+// تطبيق AutoFilter على الشيت - الإصدار النهائي المُصحَّح
 // ======================================================
 
 async function applyFilterToSheet() {
@@ -624,6 +618,16 @@ async function applyFilterToSheet() {
     return;
   }
 
+  // ✅ تنظيف القيم قبل التمرير
+  const filterValues = lastFilterValues
+    .map(v => String(v).trim())
+    .filter(v => v.length > 0);
+
+  if (!filterValues.length) {
+    resultDiv.innerText = "⚠️ لا توجد قيم صالحة للفلترة";
+    return;
+  }
+
   try {
 
     await Excel.run(async (context) => {
@@ -631,49 +635,45 @@ async function applyFilterToSheet() {
       const sheet = context.workbook.worksheets.getActiveWorksheet();
 
       const used = sheet.getUsedRange();
-      used.load(["rowIndex", "rowCount", "columnCount"]);
+      used.load(["rowIndex", "rowCount"]);
       await context.sync();
 
-      const headerRowIndex = used.rowIndex;
-      const totalRows      = used.rowCount;
-
-      // ✅ الخطوة 1: إزالة أي فلتر قديم من الشيت
-      //    يتم ذلك عبر sheet.autoFilter.remove() وليس عبر range.removeFilter()
+      // مسح أي فلتر قديم
       try {
         sheet.autoFilter.remove();
         await context.sync();
-      } catch (_) {
-        // لا يوجد فلتر قديم - نتجاهل الخطأ
-      }
+      } catch (_) {}
 
-      // ✅ الخطوة 2: تحديد نطاق الفلتر (B إلى G)
+      // ✅ نطاق الفلتر يشمل الهيدر (B إلى G)
       const filterRange = sheet.getRangeByIndexes(
-        headerRowIndex,  // بداية من الصف الأول (الهيدر)
+        used.rowIndex,   // بداية من صف الهيدر
         1,               // العمود B
-        totalRows,       // عدد الصفوف
+        used.rowCount,   // عدد الصفوف
         6                // عدد الأعمدة B..G
       );
 
-      // ✅ الخطوة 3: حساب فهرس العمود داخل النطاق
-      //    داخل النطاق B..G، العمود B = 0، C = 1، D = 2، إلخ
-      //    lastFilterColumn هو فهرس عام من A (C=2, D=3, F=5, G=6)
-      const colInRange = lastFilterColumn - 1;
+      // ✅ فهرس العمود النسبي داخل filterRange (B=0 → G=5)
+      const FIELD_TO_REL_COL = {
+        account:  1,  // C
+        passport: 2,  // D
+        national: 4,  // F
+        phone:    5   // G
+      };
+      const colInRange = FIELD_TO_REL_COL[searchField] ?? 1;
 
-      // ✅ الخطوة 4: تطبيق الفلتر بالطريقة الصحيحة
-      //    نستخدم sheet.autoFilter.apply(range, columnIndex, criteria)
+      // ✅ التطبيق الصحيح
       sheet.autoFilter.apply(filterRange, colInRange, {
         filterOn: Excel.FilterOn.values,
-        values: lastFilterValues
+        values: filterValues
       });
 
       sheet.activate();
       await context.sync();
 
       resultDiv.innerText =
-        `🎯 تم توجيه الشيت إلى ${lastFilterValues.length} قيمة.\n` +
+        `🎯 تم توجيه الشيت إلى ${filterValues.length} قيمة.\n` +
         `لإلغاء الفلتر: اضغط "🚫 إلغاء الفلتر" أو من أيقونة الفلتر في الشيت.`;
 
-      // إعادة الزر لحالة البحث
       searchButtonMode = "search";
       document.getElementById("searchBtn").innerText = "🔎 بحث";
       lastFilterValues = [];
