@@ -154,16 +154,17 @@
       cursor:pointer;
     }
 
-    /* ===== مسح + Export ===== */
+    /* ===== مسح + Export + إلغاء الفلتر ===== */
     .centerBtns{
       display:flex;
       justify-content:center;
       gap:10px;
       margin-top:12px;
+      flex-wrap:wrap;
     }
 
     .centerBtns button{
-      flex:0.5;
+      flex:1 1 0;
       max-width:160px;
       padding:10px;
       font-size:12px;
@@ -175,6 +176,10 @@
 
     #clearBtn{
       background:linear-gradient(135deg,#dc3545,#a71d2a);
+    }
+
+    #clearFilterBtn{
+      background:linear-gradient(135deg,#f59e0b,#b45309);
     }
 
     /* ===== وضع البحث ===== */
@@ -317,11 +322,12 @@
 
     </div>
 
-    <!-- مسح + Export -->
+    <!-- مسح + Export + إلغاء الفلتر -->
     <div class="centerBtns">
 
       <button id="clearBtn">🗑 مسح</button>
       <button id="exportBtn">📤 Export</button>
+      <button id="clearFilterBtn">🚫 إلغاء الفلتر</button>
 
     </div>
 
