@@ -48,12 +48,7 @@ Office.onReady(() => {
       try {
         await Excel.run(async (context) => {
           const sheet = context.workbook.worksheets.getActiveWorksheet();
-          const used  = sheet.getUsedRange();
-          used.load(["rowIndex", "rowCount"]);
-          await context.sync();
-
-          const range = sheet.getRangeByIndexes(used.rowIndex, 1, used.rowCount, 6);
-          range.removeFilter();
+          sheet.autoFilter.remove();
           await context.sync();
         });
         document.getElementById("result").innerText = "✅ تم إلغاء الفلتر";
@@ -137,7 +132,7 @@ Office.onReady(() => {
 // ======================================================
 
 let searchMode  = "independent";
-let searchField = "account"; // account | phone | national | passport
+let searchField = "account";
 let resultsData = [];
 
 let accountIndex  = {};
@@ -149,12 +144,12 @@ let last5Index = {};
 
 let nationalIndex = {};
 let phoneIndex    = {};
-let passportIndex = {}; // رقم الجواز = العمود D (card)
+let passportIndex = {};
 
 // للفلترة
-let searchButtonMode = "search"; // search | filter
+let searchButtonMode = "search";
 let lastFilterValues = [];
-let lastFilterColumn = 2;        // C = 2 (0-based من A)
+let lastFilterColumn = 2;
 
 const CHUNK_SIZE = 5000;
 const MAX_ROWS   = 50000;
@@ -190,22 +185,17 @@ function resetIndexes() {
 
 // ======================================================
 // إضافة صف إلى الفهارس
-//
-// B = الاسم        (index 0)
-// C = الحساب       (index 1)
-// D = رقم الجواز   (index 2)
-// E = فاضي         (index 3)
-// F = الرقم الوطني (index 4)
-// G = رقم الهاتف   (index 5)
+// B=الاسم(0) C=الحساب(1) D=الجواز(2) E=فاضي(3)
+// F=الوطني(4) G=الهاتف(5)
 // ======================================================
 
 function addRowToIndex(row, rowIndex) {
 
   const name     = row[0] ?? "";
   const account  = row[1] ?? "";
-  const passport = row[2] ?? ""; // D - رقم الجواز
-  const national = row[4] ?? ""; // F
-  const phone    = row[5] ?? ""; // G
+  const passport = row[2] ?? "";
+  const national = row[4] ?? "";
+  const phone    = row[5] ?? "";
 
   const cleanName     = cleanValue(name);
   const cleanAcc      = cleanValue(account);
@@ -213,52 +203,44 @@ function addRowToIndex(row, rowIndex) {
   const cleanNational = cleanValue(national);
   const cleanPhone    = cleanValue(phone);
 
-  // الاسم
   if (cleanName) {
     if (!nameIndex[cleanName]) nameIndex[cleanName] = [];
     nameIndex[cleanName].push(rowIndex);
   }
 
-  // رقم الحساب
   if (cleanAcc) {
     if (accountIndex[cleanAcc] === undefined) accountIndex[cleanAcc] = [];
     accountIndex[cleanAcc].push(rowIndex);
   }
 
-  // الاسم + رقم الحساب
   if (cleanName && cleanAcc) {
     const key = cleanName + "|" + cleanAcc;
     if (pairIndex[key] === undefined) pairIndex[key] = [];
     pairIndex[key].push(rowIndex);
   }
 
-  // آخر 6 أرقام
   if (cleanAcc && cleanAcc.length >= 6) {
     const last6 = cleanAcc.slice(-6);
     if (!last6Index[last6]) last6Index[last6] = [];
     last6Index[last6].push(rowIndex);
   }
 
-  // آخر 5 أرقام
   if (cleanAcc && cleanAcc.length >= 5) {
     const last5 = cleanAcc.slice(-5);
     if (!last5Index[last5]) last5Index[last5] = [];
     last5Index[last5].push(rowIndex);
   }
 
-  // رقم الجواز
   if (cleanPassport) {
     if (!passportIndex[cleanPassport]) passportIndex[cleanPassport] = [];
     passportIndex[cleanPassport].push(rowIndex);
   }
 
-  // الرقم الوطني
   if (cleanNational) {
     if (!nationalIndex[cleanNational]) nationalIndex[cleanNational] = [];
     nationalIndex[cleanNational].push(rowIndex);
   }
 
-  // رقم الهاتف
   if (cleanPhone) {
     if (!phoneIndex[cleanPhone]) phoneIndex[cleanPhone] = [];
     phoneIndex[cleanPhone].push(rowIndex);
@@ -305,7 +287,7 @@ function getFieldValue(item) {
   switch (searchField) {
     case "phone":    return item.phone;
     case "national": return item.national;
-    case "passport": return item.card;   // card = رقم الجواز
+    case "passport": return item.card;
     case "account":
     default:         return item.account;
   }
@@ -389,7 +371,6 @@ async function searchAccount() {
   resultsData = [];
   resetIndexes();
 
-  // إعادة الزر لحالة البحث
   searchButtonMode = "search";
   document.getElementById("searchBtn").innerText = "🔎 بحث";
 
@@ -417,12 +398,12 @@ async function searchAccount() {
         for (let i = 0; i < rowsToRead; i++) {
 
           const row = [
-            values[i]?.[0] ?? "", // B - الاسم
-            values[i]?.[1] ?? "", // C - الحساب
-            values[i]?.[2] ?? "", // D - رقم الجواز
-            values[i]?.[3] ?? "", // E - فاضي
-            values[i]?.[4] ?? "", // F - الرقم الوطني
-            values[i]?.[5] ?? ""  // G - رقم الهاتف
+            values[i]?.[0] ?? "",
+            values[i]?.[1] ?? "",
+            values[i]?.[2] ?? "",
+            values[i]?.[3] ?? "",
+            values[i]?.[4] ?? "",
+            values[i]?.[5] ?? ""
           ];
 
           addRowToIndex(row, startRow + i);
@@ -443,8 +424,6 @@ async function searchAccount() {
       let output = "";
       let foundCount = 0;
 
-
-      // دالة مساعدة: تقرأ صف كامل
       async function readFullRow(rowIndex) {
         const r = sheet.getRangeByIndexes(rowIndex, 1, 1, 6);
         r.load("text");
@@ -453,11 +432,11 @@ async function searchAccount() {
         const row = r.text[0];
         return {
           rowIndex,
-          name:     row[0] ?? "", // B
-          account:  row[1] ?? "", // C
-          card:     row[2] ?? "", // D - رقم الجواز
-          national: row[4] ?? "", // F
-          phone:    row[5] ?? ""  // G
+          name:     row[0] ?? "",
+          account:  row[1] ?? "",
+          card:     row[2] ?? "",
+          national: row[4] ?? "",
+          phone:    row[5] ?? ""
         };
       }
 
@@ -478,7 +457,6 @@ async function searchAccount() {
 
       if (searchMode === "independent") {
 
-        // البحث بخانة الأرقام (حسب الحقل المختار)
         for (const acc of accounts) {
 
           const rows = findRows(acc);
@@ -503,7 +481,6 @@ async function searchAccount() {
           }
         }
 
-        // البحث بالأسماء (زي ما هو)
         for (const name of names) {
 
           const cleanName = cleanValue(name);
@@ -533,7 +510,6 @@ async function searchAccount() {
 
       // ==================================================
       // الوضع المطابق
-      // المطابقة: الاسم + الحقل المختار (رقم حساب/هاتف/وطني/جواز)
       // ==================================================
 
       else {
@@ -599,10 +575,10 @@ async function searchAccount() {
       // ==================================================
 
       const FIELD_TO_COLUMN = {
-        account:  2, // C
-        passport: 3, // D
-        national: 5, // F
-        phone:    6  // G
+        account:  2,
+        passport: 3,
+        national: 5,
+        phone:    6
       };
 
       const rawValues = accountInput
@@ -636,7 +612,7 @@ async function searchAccount() {
 
 
 // ======================================================
-// تطبيق AutoFilter على الشيت
+// تطبيق AutoFilter على الشيت - الإصدار المُصحَّح
 // ======================================================
 
 async function applyFilterToSheet() {
@@ -655,35 +631,39 @@ async function applyFilterToSheet() {
       const sheet = context.workbook.worksheets.getActiveWorksheet();
 
       const used = sheet.getUsedRange();
-      used.load(["rowIndex", "rowCount"]);
+      used.load(["rowIndex", "rowCount", "columnCount"]);
       await context.sync();
 
       const headerRowIndex = used.rowIndex;
       const totalRows      = used.rowCount;
 
-      // رينج الفلتر من B إلى G (6 أعمدة)
+      // ✅ الخطوة 1: إزالة أي فلتر قديم من الشيت
+      //    يتم ذلك عبر sheet.autoFilter.remove() وليس عبر range.removeFilter()
+      try {
+        sheet.autoFilter.remove();
+        await context.sync();
+      } catch (_) {
+        // لا يوجد فلتر قديم - نتجاهل الخطأ
+      }
+
+      // ✅ الخطوة 2: تحديد نطاق الفلتر (B إلى G)
       const filterRange = sheet.getRangeByIndexes(
-        headerRowIndex,
-        1,          // B
-        totalRows,
-        6           // B..G
+        headerRowIndex,  // بداية من الصف الأول (الهيدر)
+        1,               // العمود B
+        totalRows,       // عدد الصفوف
+        6                // عدد الأعمدة B..G
       );
 
-      // العمود داخل الرينج (B=0 → col - 1)
+      // ✅ الخطوة 3: حساب فهرس العمود داخل النطاق
+      //    داخل النطاق B..G، العمود B = 0، C = 1، D = 2، إلخ
+      //    lastFilterColumn هو فهرس عام من A (C=2, D=3, F=5, G=6)
       const colInRange = lastFilterColumn - 1;
 
-      // شيل أي فلتر قديم
-      try {
-        filterRange.removeFilter();
-        await context.sync();
-      } catch (_) {}
-
-      // طبّق الفلتر
-      filterRange.autoFilter(colInRange, {
-        criteria: {
-          filterOn: Excel.FilterOn.values,
-          values: lastFilterValues
-        }
+      // ✅ الخطوة 4: تطبيق الفلتر بالطريقة الصحيحة
+      //    نستخدم sheet.autoFilter.apply(range, columnIndex, criteria)
+      sheet.autoFilter.apply(filterRange, colInRange, {
+        filterOn: Excel.FilterOn.values,
+        values: lastFilterValues
       });
 
       sheet.activate();
@@ -693,10 +673,11 @@ async function applyFilterToSheet() {
         `🎯 تم توجيه الشيت إلى ${lastFilterValues.length} قيمة.\n` +
         `لإلغاء الفلتر: اضغط "🚫 إلغاء الفلتر" أو من أيقونة الفلتر في الشيت.`;
 
-      // رجّع الزر لحالة البحث
+      // إعادة الزر لحالة البحث
       searchButtonMode = "search";
       document.getElementById("searchBtn").innerText = "🔎 بحث";
       lastFilterValues = [];
+
     });
 
   } catch (error) {
