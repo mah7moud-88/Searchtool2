@@ -1,12 +1,13 @@
 Office.onReady(() => {
 
-  const searchBtn = document.getElementById("searchBtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const clearBtn  = document.getElementById("clearBtn");
-  const excelFile = document.getElementById("excelFile");
-  const modeBtn   = document.getElementById("modeBtn");
-  const fieldBtn  = document.getElementById("fieldBtn");
-  const fieldMenu = document.getElementById("fieldMenu");
+  const searchBtn      = document.getElementById("searchBtn");
+  const exportBtn      = document.getElementById("exportBtn");
+  const clearBtn       = document.getElementById("clearBtn");
+  const excelFile      = document.getElementById("excelFile");
+  const modeBtn        = document.getElementById("modeBtn");
+  const fieldBtn       = document.getElementById("fieldBtn");
+  const fieldMenu      = document.getElementById("fieldMenu");
+  const clearFilterBtn = document.getElementById("clearFilterBtn");
 
   // =========================
   // الأحداث
@@ -16,7 +17,16 @@ Office.onReady(() => {
     excelFile.addEventListener("change", importAccountsFromFile);
   }
 
-  if (searchBtn) searchBtn.onclick = searchAccount;
+  if (searchBtn) {
+    searchBtn.onclick = () => {
+      if (searchButtonMode === "search") {
+        searchAccount();
+      } else {
+        applyFilterToSheet();
+      }
+    };
+  }
+
   if (exportBtn) exportBtn.onclick = exportExcel;
 
   if (clearBtn) {
@@ -26,6 +36,32 @@ Office.onReady(() => {
       document.getElementById("result").innerText = "تم المسح";
       resultsData = [];
       resetIndexes();
+
+      searchButtonMode = "search";
+      searchBtn.innerText = "🔎 بحث";
+      lastFilterValues = [];
+    };
+  }
+
+  if (clearFilterBtn) {
+    clearFilterBtn.onclick = async () => {
+      try {
+        await Excel.run(async (context) => {
+          const sheet = context.workbook.worksheets.getActiveWorksheet();
+          const used  = sheet.getUsedRange();
+          used.load(["rowIndex", "rowCount"]);
+          await context.sync();
+
+          const range = sheet.getRangeByIndexes(used.rowIndex, 1, used.rowCount, 6);
+          range.removeFilter();
+          await context.sync();
+        });
+        document.getElementById("result").innerText = "✅ تم إلغاء الفلتر";
+      } catch (error) {
+        console.error(error);
+        document.getElementById("result").innerText =
+          "❌ خطأ أثناء إلغاء الفلتر: " + (error.message || "");
+      }
     };
   }
 
@@ -114,6 +150,11 @@ let last5Index = {};
 let nationalIndex = {};
 let phoneIndex    = {};
 let passportIndex = {}; // رقم الجواز = العمود D (card)
+
+// للفلترة
+let searchButtonMode = "search"; // search | filter
+let lastFilterValues = [];
+let lastFilterColumn = 2;        // C = 2 (0-based من A)
 
 const CHUNK_SIZE = 5000;
 const MAX_ROWS   = 50000;
@@ -348,6 +389,10 @@ async function searchAccount() {
   resultsData = [];
   resetIndexes();
 
+  // إعادة الزر لحالة البحث
+  searchButtonMode = "search";
+  document.getElementById("searchBtn").innerText = "🔎 بحث";
+
   try {
 
     await Excel.run(async (context) => {
@@ -407,6 +452,7 @@ async function searchAccount() {
 
         const row = r.text[0];
         return {
+          rowIndex,
           name:     row[0] ?? "", // B
           account:  row[1] ?? "", // C
           card:     row[2] ?? "", // D - رقم الجواز
@@ -449,6 +495,7 @@ async function searchAccount() {
             }
           } else {
             resultsData.push({
+              rowIndex: -1,
               name: "", account: acc, card: "", national: "", phone: "",
               status: "غير موجود"
             });
@@ -474,6 +521,7 @@ async function searchAccount() {
             }
           } else {
             resultsData.push({
+              rowIndex: -1,
               name: name, account: "", card: "", national: "", phone: "",
               status: "غير موجود"
             });
@@ -497,6 +545,7 @@ async function searchAccount() {
 
           if (!acc || !name) {
             resultsData.push({
+              rowIndex: -1,
               name, account: acc, card: "", national: "", phone: "",
               status: "بيانات ناقصة"
             });
@@ -527,6 +576,7 @@ async function searchAccount() {
 
           if (!matched) {
             resultsData.push({
+              rowIndex: -1,
               name, account: acc, card: "", national: "", phone: "",
               status: "غير مطابق"
             });
@@ -543,6 +593,34 @@ async function searchAccount() {
       resultDiv.innerText =
         `✅ تم العثور على ${foundCount} من أصل ${totalCount}\n\n` + output;
 
+
+      // ==================================================
+      // تجهيز بيانات الفلتر
+      // ==================================================
+
+      const FIELD_TO_COLUMN = {
+        account:  2, // C
+        passport: 3, // D
+        national: 5, // F
+        phone:    6  // G
+      };
+
+      const rawValues = accountInput
+        .split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+
+      lastFilterValues = rawValues;
+      lastFilterColumn = FIELD_TO_COLUMN[searchField] ?? 2;
+
+      const hasResults = resultsData.some(r => r.status === "موجود");
+
+      if (hasResults && rawValues.length > 0) {
+        searchButtonMode = "filter";
+        document.getElementById("searchBtn").innerText = "🎯 توجيه";
+      } else {
+        searchButtonMode = "search";
+        document.getElementById("searchBtn").innerText = "🔎 بحث";
+      }
+
     });
 
   } catch (error) {
@@ -550,12 +628,90 @@ async function searchAccount() {
     console.error(error);
     resultDiv.innerText =
       "❌ حدث خطأ أثناء البحث: " + (error.message || "خطأ غير معروف");
+
+    searchButtonMode = "search";
+    document.getElementById("searchBtn").innerText = "🔎 بحث";
   }
 }
 
 
 // ======================================================
-// تصدير النتائج (نفس الأعمدة كما في الكود الأصلي)
+// تطبيق AutoFilter على الشيت
+// ======================================================
+
+async function applyFilterToSheet() {
+
+  const resultDiv = document.getElementById("result");
+
+  if (!lastFilterValues.length) {
+    resultDiv.innerText = "⚠️ لا توجد قيم للفلترة";
+    return;
+  }
+
+  try {
+
+    await Excel.run(async (context) => {
+
+      const sheet = context.workbook.worksheets.getActiveWorksheet();
+
+      const used = sheet.getUsedRange();
+      used.load(["rowIndex", "rowCount"]);
+      await context.sync();
+
+      const headerRowIndex = used.rowIndex;
+      const totalRows      = used.rowCount;
+
+      // رينج الفلتر من B إلى G (6 أعمدة)
+      const filterRange = sheet.getRangeByIndexes(
+        headerRowIndex,
+        1,          // B
+        totalRows,
+        6           // B..G
+      );
+
+      // العمود داخل الرينج (B=0 → col - 1)
+      const colInRange = lastFilterColumn - 1;
+
+      // شيل أي فلتر قديم
+      try {
+        filterRange.removeFilter();
+        await context.sync();
+      } catch (_) {}
+
+      // طبّق الفلتر
+      filterRange.autoFilter(colInRange, {
+        criteria: {
+          filterOn: Excel.FilterOn.values,
+          values: lastFilterValues
+        }
+      });
+
+      sheet.activate();
+      await context.sync();
+
+      resultDiv.innerText =
+        `🎯 تم توجيه الشيت إلى ${lastFilterValues.length} قيمة.\n` +
+        `لإلغاء الفلتر: اضغط "🚫 إلغاء الفلتر" أو من أيقونة الفلتر في الشيت.`;
+
+      // رجّع الزر لحالة البحث
+      searchButtonMode = "search";
+      document.getElementById("searchBtn").innerText = "🔎 بحث";
+      lastFilterValues = [];
+    });
+
+  } catch (error) {
+    console.error(error);
+    resultDiv.innerText =
+      "❌ حدث خطأ أثناء التوجيه: " + (error.message || "خطأ غير معروف");
+
+    searchButtonMode = "search";
+    document.getElementById("searchBtn").innerText = "🔎 بحث";
+  }
+}
+
+
+// ======================================================
+// تصدير النتائج
 // ======================================================
 
 async function exportExcel() {
