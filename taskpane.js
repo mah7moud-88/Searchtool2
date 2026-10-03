@@ -573,7 +573,6 @@ async function searchAccount() {
       // تجهيز بيانات الفلتر
       // ==================================================
 
-      // ✅ القيم الصالحة فقط (بدون فراغات)
       const rawValues = accountInput
         .split(/\r?\n/)
         .map(x => String(x).trim())
@@ -606,21 +605,21 @@ async function searchAccount() {
 
 
 // ======================================================
-// تطبيق AutoFilter على الشيت - الإصدار النهائي المُصحَّح
+// تطبيق AutoFilter على الشيت - الإصدار النهائي
 // ======================================================
 
 async function applyFilterToSheet() {
 
   const resultDiv = document.getElementById("result");
 
-  if (!lastFilterValues.length) {
+  if (!lastFilterValues || !lastFilterValues.length) {
     resultDiv.innerText = "⚠️ لا توجد قيم للفلترة";
     return;
   }
 
-  // ✅ تنظيف القيم قبل التمرير
+  // ✅ التحويل الإجباري إلى String + تنظيف شامل
   const filterValues = lastFilterValues
-    .map(v => String(v).trim())
+    .map(v => String(v ?? "").trim())
     .filter(v => v.length > 0);
 
   if (!filterValues.length) {
@@ -644,15 +643,15 @@ async function applyFilterToSheet() {
         await context.sync();
       } catch (_) {}
 
-      // ✅ نطاق الفلتر يشمل الهيدر (B إلى G)
+      // نطاق الفلتر (B إلى G) - يشمل الهيدر
       const filterRange = sheet.getRangeByIndexes(
-        used.rowIndex,   // بداية من صف الهيدر
-        1,               // العمود B
-        used.rowCount,   // عدد الصفوف
-        6                // عدد الأعمدة B..G
+        used.rowIndex,
+        1,
+        used.rowCount,
+        6
       );
 
-      // ✅ فهرس العمود النسبي داخل filterRange (B=0 → G=5)
+      // فهرس العمود النسبي داخل النطاق (B=0, C=1, D=2, F=4, G=5)
       const FIELD_TO_REL_COL = {
         account:  1,  // C
         passport: 2,  // D
@@ -661,7 +660,7 @@ async function applyFilterToSheet() {
       };
       const colInRange = FIELD_TO_REL_COL[searchField] ?? 1;
 
-      // ✅ التطبيق الصحيح
+      // ✅ التطبيق الصحيح مع قيم نصية نظيفة
       sheet.autoFilter.apply(filterRange, colInRange, {
         filterOn: Excel.FilterOn.values,
         values: filterValues
